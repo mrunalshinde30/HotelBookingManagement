@@ -1,25 +1,88 @@
 /**
  * Booking
  *
- * Entry point of the Book My Stay Hotel Booking application.
- * Displays welcome message and application version.
+ * Demonstrates basic room types and static availability
+ * for the Book My Stay Hotel Booking System.
  *
- * @author Student
- * @version 1.0
+ * @version 2.0
  */
+
+abstract class Room {
+
+    String roomType;
+    int beds;
+    double price;
+
+    public Room(String roomType, int beds, double price) {
+        this.roomType = roomType;
+        this.beds = beds;
+        this.price = price;
+    }
+
+    public void displayDetails() {
+        System.out.println("Room Type : " + roomType);
+        System.out.println("Beds      : " + beds);
+        System.out.println("Price     : $" + price);
+    }
+}
+
+
+/* Concrete Room Types */
+
+class SingleRoom extends Room {
+
+    public SingleRoom() {
+        super("Single Room", 1, 80.0);
+    }
+}
+
+class DoubleRoom extends Room {
+
+    public DoubleRoom() {
+        super("Double Room", 2, 120.0);
+    }
+}
+
+class SuiteRoom extends Room {
+
+    public SuiteRoom() {
+        super("Suite Room", 3, 250.0);
+    }
+}
+
+
+/* Application Entry */
 
 public class Booking {
 
-    /**
-     * Main method – starting point of the program
-     */
     public static void main(String[] args) {
 
-        System.out.println("=====================================");
-        System.out.println(" Welcome to Book My Stay App ");
-        System.out.println(" Hotel Booking System v1.0 ");
-        System.out.println("=====================================");
+        System.out.println("=================================");
+        System.out.println(" Book My Stay - Room Availability ");
+        System.out.println(" Version 2.0 ");
+        System.out.println("=================================");
 
-        System.out.println("Application started successfully.");
+        // Create room objects
+        Room single = new SingleRoom();
+        Room doubleRoom = new DoubleRoom();
+        Room suite = new SuiteRoom();
+
+        // Static availability
+        int singleAvailable = 10;
+        int doubleAvailable = 5;
+        int suiteAvailable = 2;
+
+        // Display room details
+        System.out.println("\nSingle Room:");
+        single.displayDetails();
+        System.out.println("Available : " + singleAvailable);
+
+        System.out.println("\nDouble Room:");
+        doubleRoom.displayDetails();
+        System.out.println("Available : " + doubleAvailable);
+
+        System.out.println("\nSuite Room:");
+        suite.displayDetails();
+        System.out.println("Available : " + suiteAvailable);
     }
 }
