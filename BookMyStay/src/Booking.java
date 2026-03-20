@@ -1,83 +1,104 @@
+import java.io.*;
 import java.util.*;
 
-public class Booking {
+// -------- Room Inventory --------
+class RoomInventory {
+    private Map<String, Integer> rooms = new HashMap<>();
 
-    /* =======================
-       CLASS: AddOnService
-    ======================= */
-    static class AddOnService {
-        private String serviceName;
-        private double cost;
+    public void addRoom(String type, int count) {
+        rooms.put(type, count);
+    }
 
-        public AddOnService(String serviceName, double cost) {
-            this.serviceName = serviceName;
-            this.cost = cost;
-        }
+    public int getAvailability(String type) {
+        return rooms.getOrDefault(type, 0);
+    }
 
-        public String getServiceName() {
-            return serviceName;
-        }
+    public Map<String, Integer> getAllRooms() {
+        return rooms;
+    }
 
-        public double getCost() {
-            return cost;
+    public void setRoom(String type, int count) {
+        rooms.put(type, count);
+    }
+}
+
+// -------- Persistence Service --------
+class FilePersistenceService {
+
+    public void saveInventory(RoomInventory inventory, String filePath) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+
+            for (Map.Entry<String, Integer> entry : inventory.getAllRooms().entrySet()) {
+                writer.write(entry.getKey() + "=" + entry.getValue());
+                writer.newLine();
+            }
+
+            System.out.println("Inventory saved successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error saving inventory.");
         }
     }
 
-    /* =======================
-       CLASS: AddOnServiceManager
-    ======================= */
-    static class AddOnServiceManager {
+    public void loadInventory(RoomInventory inventory, String filePath) {
+        File file = new File(filePath);
 
-        private Map<String, List<AddOnService>> servicesByReservation;
-
-        public AddOnServiceManager() {
-            servicesByReservation = new HashMap<>();
+        if (!file.exists()) {
+            System.out.println("No valid inventory data found. Starting fresh.");
+            return;
         }
 
-        public void addService(String reservationId, AddOnService service) {
-            servicesByReservation.putIfAbsent(reservationId, new ArrayList<>());
-            servicesByReservation.get(reservationId).add(service);
-        }
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
 
-        public double calculateTotalServiceCost(String reservationId) {
-            double total = 0;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split("=");
 
-            List<AddOnService> services = servicesByReservation.get(reservationId);
+                if (parts.length == 2) {
+                    String type = parts[0];
+                    int count = Integer.parseInt(parts[1]);
 
-            if (services != null) {
-                for (AddOnService s : services) {
-                    total += s.getCost();
+                    inventory.setRoom(type, count);
                 }
             }
 
-            return total;
+            System.out.println("Inventory loaded successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error loading inventory.");
         }
     }
+}
 
-    /* =======================
-       MAIN METHOD (UC7)
-    ======================= */
+// -------- MAIN CLASS --------
+public class Booking {
+
     public static void main(String[] args) {
 
-        System.out.println("Add-On Service Selection");
+        System.out.println("System Recovery");
 
-        AddOnServiceManager manager = new AddOnServiceManager();
+        String filePath = "inventory.txt";
 
-        String reservationId = "Single-1";
+        RoomInventory inventory = new RoomInventory();
+        FilePersistenceService service = new FilePersistenceService();
 
-        // create services
-        AddOnService s1 = new AddOnService("Breakfast", 500);
-        AddOnService s2 = new AddOnService("Spa", 1000);
+        // 🔄 Load previous data
+        service.loadInventory(inventory, filePath);
 
-        // add services
-        manager.addService(reservationId, s1);
-        manager.addService(reservationId, s2);
+        // If empty → initialize
+        if (inventory.getAllRooms().isEmpty()) {
+            inventory.addRoom("Single", 5);
+            inventory.addRoom("Double", 3);
+            inventory.addRoom("Suite", 2);
+        }
 
-        // calculate total cost
-        double totalCost = manager.calculateTotalServiceCost(reservationId);
+        // 📊 Display inventory
+        System.out.println("\nCurrent Inventory:");
+        for (Map.Entry<String, Integer> entry : inventory.getAllRooms().entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
 
-        // output
-        System.out.println("Reservation ID: " + reservationId);
-        System.out.println("Total Add-On Cost: " + totalCost);
+        // 💾 Save inventory
+        service.saveInventory(inventory, filePath);
     }
 }
