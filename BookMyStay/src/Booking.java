@@ -1,83 +1,137 @@
 import java.util.*;
 
-public class Booking {
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    /* =======================
-       CLASS: AddOnService
-    ======================= */
-    static class AddOnService {
-        private String serviceName;
-        private double cost;
-
-        public AddOnService(String serviceName, double cost) {
-            this.serviceName = serviceName;
-            this.cost = cost;
-        }
-
-        public String getServiceName() {
-            return serviceName;
-        }
-
-        public double getCost() {
-            return cost;
-        }
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    /* =======================
-       CLASS: AddOnServiceManager
-    ======================= */
-    static class AddOnServiceManager {
+    public String getGuestName() { return guestName; }
+    public String getRoomType() { return roomType; }
+}
 
-        private Map<String, List<AddOnService>> servicesByReservation;
+class BookingRequestQueue {
+    private Queue<Reservation> queue = new LinkedList<>();
 
-        public AddOnServiceManager() {
-            servicesByReservation = new HashMap<>();
+    public void addRequest(Reservation r) {
+        queue.offer(r);
+    }
+
+    public Reservation getNextRequest() {
+        return queue.poll();
+    }
+
+    public boolean hasPendingRequests() {
+        return !queue.isEmpty();
+    }
+}
+
+class RoomInventory {
+    private Map<String, Integer> rooms = new HashMap<>();
+
+    public void addRoom(String type, int count) {
+        rooms.put(type, count);
+    }
+
+    public int getAvailability(String type) {
+        return rooms.getOrDefault(type, 0);
+    }
+
+    public void reduceRoom(String type) {
+        rooms.put(type, rooms.get(type) - 1);
+    }
+}
+
+class RoomAllocationService {
+    private Map<String, Integer> counter = new HashMap<>();
+
+    public void allocateRoom(Reservation r, RoomInventory inventory) {
+        String type = r.getRoomType();
+
+        if (inventory.getAvailability(type) <= 0) {
+            System.out.println("No rooms available for " + type);
+            return;
         }
 
-        public void addService(String reservationId, AddOnService service) {
-            servicesByReservation.putIfAbsent(reservationId, new ArrayList<>());
-            servicesByReservation.get(reservationId).add(service);
-        }
+        int num = counter.getOrDefault(type, 0) + 1;
+        counter.put(type, num);
 
-        public double calculateTotalServiceCost(String reservationId) {
-            double total = 0;
+        String roomId = type + "-" + num;
 
-            List<AddOnService> services = servicesByReservation.get(reservationId);
+        inventory.reduceRoom(type);
 
-            if (services != null) {
-                for (AddOnService s : services) {
-                    total += s.getCost();
-                }
+        System.out.println("Booking confirmed for Guest: "
+                + r.getGuestName() + ", Room ID: " + roomId);
+    }
+}
+
+class ConcurrentBookingProcessor implements Runnable {
+    private BookingRequestQueue queue;
+    private RoomInventory inventory;
+    private RoomAllocationService service;
+
+    public ConcurrentBookingProcessor(BookingRequestQueue q,
+                                      RoomInventory i,
+                                      RoomAllocationService s) {
+        queue = q;
+        inventory = i;
+        service = s;
+    }
+
+    public void run() {
+        while (true) {
+            Reservation r;
+
+            synchronized (queue) {
+                if (!queue.hasPendingRequests()) break;
+                r = queue.getNextRequest();
             }
 
-            return total;
+            synchronized (inventory) {
+                service.allocateRoom(r, inventory);
+            }
         }
     }
+}
 
-    /* =======================
-       MAIN METHOD (UC7)
-    ======================= */
+public class Booking {
     public static void main(String[] args) {
 
-        System.out.println("Add-On Service Selection");
+        System.out.println("Concurrent Booking Simulation");
 
-        AddOnServiceManager manager = new AddOnServiceManager();
+        RoomInventory inventory = new RoomInventory();
+        inventory.addRoom("Single", 2);
+        inventory.addRoom("Double", 2);
+        inventory.addRoom("Suite", 2);
 
-        String reservationId = "Single-1";
+        BookingRequestQueue queue = new BookingRequestQueue();
 
-        // create services
-        AddOnService s1 = new AddOnService("Breakfast", 500);
-        AddOnService s2 = new AddOnService("Spa", 1000);
+        queue.addRequest(new Reservation("Abhi", "Single"));
+        queue.addRequest(new Reservation("Subha", "Single"));
+        queue.addRequest(new Reservation("Vanmathi", "Double"));
+        queue.addRequest(new Reservation("Kural", "Suite"));
 
-        // add services
-        manager.addService(reservationId, s1);
-        manager.addService(reservationId, s2);
+        RoomAllocationService service = new RoomAllocationService();
 
-        // calculate total cost
-        double totalCost = manager.calculateTotalServiceCost(reservationId);
+        Thread t1 = new Thread(new ConcurrentBookingProcessor(queue, inventory, service));
+        Thread t2 = new Thread(new ConcurrentBookingProcessor(queue, inventory, service));
 
-        // output
-        System.out.println("Reservation ID: " + reservationId);
-        System.out.println("Total Add-On Cost: " + totalCost);
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+            t2.join();
+        } catch (Exception e) {
+            System.out.println("Thread interrupted");
+        }
+
+        System.out.println("\nRemaining Inventory:");
+        System.out.println("Single: " + inventory.getAvailability("Single"));
+        System.out.println("Double: " + inventory.getAvailability("Double"));
+        System.out.println("Suite: " + inventory.getAvailability("Suite"));
     }
 }
